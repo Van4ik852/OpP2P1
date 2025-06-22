@@ -1,0 +1,1454 @@
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Protocol Simulator | OptimumP2P vs Gossipsub</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+
+    :root {
+      --primary: #6366f1;
+      --secondary: #ec4899;
+      --accent: #8b5cf6;
+      --background: #0f172a;
+      --foreground: #f8fafc;
+      --node-color: #3b82f6;
+      --node-color-alt: #10b981;
+      --node-shadow: rgba(99, 102, 241, 0.5);
+      --grid-color: rgba(148, 163, 184, 0.1);
+      --rlnc-color: #6366f1;
+      --gossipsub-color: #ec4899;
+    }
+
+    .light-theme {
+      --primary: #4f46e5;
+      --secondary: #db2777;
+      --accent: #7c3aed;
+      --background: #f1f5f9;
+      --foreground: #0f172a;
+      --node-color: #2563eb;
+      --node-color-alt: #059669;
+      --node-shadow: rgba(79, 70, 229, 0.3);
+      --grid-color: rgba(148, 163, 184, 0.2);
+    }
+
+    .neon-theme {
+      --primary: #00ffff;
+      --secondary: #ff00ff;
+      --accent: #ffff00;
+      --background: #000000;
+      --foreground: #ffffff;
+      --node-color: #00ffff;
+      --node-color-alt: #00ff00;
+      --node-shadow: rgba(0, 255, 255, 0.5);
+      --grid-color: rgba(0, 255, 255, 0.1);
+      --rlnc-color: #00ffff;
+      --gossipsub-color: #ff00ff;
+    }
+
+    .cyberpunk-theme {
+      --primary: #f9cb28;
+      --secondary: #ff2a6d;
+      --accent: #01ffc3;
+      --background: #1a1a2e;
+      --foreground: #f8f9fa;
+      --node-color: #f9cb28;
+      --node-color-alt: #01ffc3;
+      --node-shadow: rgba(249, 203, 40, 0.5);
+      --grid-color: rgba(1, 255, 195, 0.1);
+      --rlnc-color: #01ffc3;
+      --gossipsub-color: #ff2a6d;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: var(--background);
+      color: var(--foreground);
+      transition: background-color 0.3s ease, color 0.3s ease;
+      overflow-x: hidden;
+    }
+
+    h1, h2, h3, h4, h5, h6 {
+      font-family: 'Space Grotesk', sans-serif;
+    }
+
+    .simulation-container {
+      perspective: 1000px;
+      overflow: hidden;
+    }
+
+    .grid {
+      background-image: 
+        linear-gradient(to right, var(--grid-color) 1px, transparent 1px),
+        linear-gradient(to bottom, var(--grid-color) 1px, transparent 1px);
+      background-size: 50px 50px;
+    }
+
+    .node {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      position: absolute;
+      transform-style: preserve-3d;
+      transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+      box-shadow: 0 0 15px var(--node-shadow);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: bold;
+      font-size: 12px;
+      z-index: 10;
+    }
+
+    .node:hover {
+      transform: scale(1.2);
+    }
+
+    .node-rlnc {
+      background: radial-gradient(circle at 30% 30%, var(--rlnc-color), #4338ca);
+    }
+
+    .node-gossipsub {
+      background: radial-gradient(circle at 30% 30%, var(--gossipsub-color), #be185d);
+    }
+
+    .packet {
+      position: absolute;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      z-index: 5;
+    }
+
+    .packet-rlnc {
+      background: var(--rlnc-color);
+      box-shadow: 0 0 10px var(--rlnc-color);
+    }
+
+    .packet-gossipsub {
+      background: var(--gossipsub-color);
+      box-shadow: 0 0 10px var(--gossipsub-color);
+    }
+
+    .shard {
+      position: absolute;
+      width: 8px;
+      height: 8px;
+      border-radius: 2px;
+      z-index: 5;
+      transform-style: preserve-3d;
+    }
+
+    .connection {
+      position: absolute;
+      height: 2px;
+      transform-origin: left center;
+      z-index: 1;
+      opacity: 0.5;
+    }
+
+    .connection-rlnc {
+      background: linear-gradient(90deg, var(--rlnc-color), transparent);
+    }
+
+    .connection-gossipsub {
+      background: linear-gradient(90deg, var(--gossipsub-color), transparent);
+    }
+
+    .btn {
+      background-color: var(--primary);
+      color: white;
+      padding: 0.5rem 1rem;
+      border-radius: 0.375rem;
+      font-weight: 500;
+      transition: all 0.2s ease;
+      border: none;
+      cursor: pointer;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    }
+
+    .btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    }
+
+    .btn-secondary {
+      background-color: var(--secondary);
+    }
+
+    .btn-accent {
+      background-color: var(--accent);
+    }
+
+    .slider {
+      -webkit-appearance: none;
+      width: 100%;
+      height: 6px;
+      border-radius: 3px;
+      background: rgba(255, 255, 255, 0.2);
+      outline: none;
+    }
+
+    .slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: var(--primary);
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .slider::-webkit-slider-thumb:hover {
+      transform: scale(1.2);
+    }
+
+    .slider::-moz-range-thumb {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: var(--primary);
+      cursor: pointer;
+      transition: all 0.2s ease;
+      border: none;
+    }
+
+    .slider::-moz-range-thumb:hover {
+      transform: scale(1.2);
+    }
+
+    .card {
+      background-color: rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(10px);
+      border-radius: 0.75rem;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 1.5rem;
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    }
+
+    .metric-value {
+      font-family: 'Space Grotesk', monospace;
+      font-weight: 600;
+    }
+
+    .theme-selector {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      z-index: 100;
+    }
+
+    .theme-btn {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      margin-left: 0.5rem;
+      cursor: pointer;
+      border: 2px solid transparent;
+      transition: transform 0.2s ease;
+    }
+
+    .theme-btn:hover {
+      transform: scale(1.2);
+    }
+
+    .theme-btn.active {
+      border-color: white;
+    }
+
+    .dark-theme-btn {
+      background: linear-gradient(135deg, #6366f1, #ec4899);
+    }
+
+    .light-theme-btn {
+      background: linear-gradient(135deg, #4f46e5, #db2777);
+    }
+
+    .neon-theme-btn {
+      background: linear-gradient(135deg, #00ffff, #ff00ff);
+    }
+
+    .cyberpunk-theme-btn {
+      background: linear-gradient(135deg, #f9cb28, #ff2a6d);
+    }
+
+    .confetti {
+      position: absolute;
+      width: 10px;
+      height: 10px;
+      z-index: 100;
+      pointer-events: none;
+    }
+
+    .results-modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.8);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+    }
+
+    .results-modal.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .results-content {
+      width: 80%;
+      max-width: 800px;
+      max-height: 90vh;
+      overflow-y: auto;
+      background-color: var(--background);
+      border-radius: 1rem;
+      padding: 2rem;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+      transform: scale(0.9);
+      transition: transform 0.3s ease;
+    }
+
+    .results-modal.active .results-content {
+      transform: scale(1);
+    }
+
+    .chart-container {
+      position: relative;
+      height: 200px;
+      margin-top: 1rem;
+      margin-bottom: 1rem;
+    }
+
+    .chart-bar {
+      position: absolute;
+      bottom: 0;
+      width: 40%;
+      border-radius: 4px 4px 0 0;
+      transition: height 1s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    .chart-bar-rlnc {
+      left: 5%;
+      background: linear-gradient(to top, var(--rlnc-color), rgba(99, 102, 241, 0.5));
+    }
+
+    .chart-bar-gossipsub {
+      right: 5%;
+      background: linear-gradient(to top, var(--gossipsub-color), rgba(236, 72, 153, 0.5));
+    }
+
+    .chart-label {
+      position: absolute;
+      bottom: -30px;
+      text-align: center;
+      width: 40%;
+      font-weight: 500;
+    }
+
+    .chart-value {
+      position: absolute;
+      top: -25px;
+      text-align: center;
+      width: 100%;
+      font-weight: 600;
+    }
+
+    .chart-axis {
+      position: absolute;
+      left: 0;
+      width: 100%;
+      height: 1px;
+      background-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .social-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background-color: rgba(255, 255, 255, 0.1);
+      color: var(--foreground);
+      transition: all 0.3s ease;
+      margin: 0 0.5rem;
+    }
+
+    .social-icon:hover {
+      transform: translateY(-5px);
+      background-color: var(--primary);
+      color: white;
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2);
+    }
+
+    .footer {
+      position: relative;
+      overflow: hidden;
+    }
+
+    .footer::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--primary), var(--secondary), transparent);
+    }
+
+    .optimum-logo {
+      position: relative;
+      display: inline-block;
+      font-family: 'Space Grotesk', sans-serif;
+      font-weight: 700;
+      font-size: 1.5rem;
+      background: linear-gradient(90deg, var(--primary), var(--secondary));
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+      padding-right: 1.5rem;
+    }
+
+    .optimum-logo::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      right: 0;
+      transform: translateY(-50%);
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 10px var(--accent);
+    }
+
+    @keyframes pulse {
+      0% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.1); opacity: 0.8; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+
+    .pulse {
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes float {
+      0% { transform: translateY(0px); }
+      50% { transform: translateY(-10px); }
+      100% { transform: translateY(0px); }
+    }
+
+    .float {
+      animation: float 6s ease-in-out infinite;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .spin {
+      animation: spin 10s linear infinite;
+    }
+
+    @media (max-width: 768px) {
+      .simulation-grid {
+        grid-template-columns: 1fr;
+      }
+      
+      .controls {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="theme-selector flex">
+    <div class="theme-btn dark-theme-btn active" data-theme="dark"></div>
+    <div class="theme-btn light-theme-btn" data-theme="light"></div>
+    <div class="theme-btn neon-theme-btn" data-theme="neon"></div>
+    <div class="theme-btn cyberpunk-theme-btn" data-theme="cyberpunk"></div>
+  </div>
+
+  <div class="container mx-auto px-4 py-8">
+    <div class="text-center mb-8">
+      <h1 class="text-4xl md:text-5xl font-bold mb-2 bg-clip-text text-transparent bg-gradient-to-r from-primary to-secondary">Protocol Simulator</h1>
+      <p class="text-lg opacity-80">Compare network protocols with cinematic visualization</p>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 simulation-grid">
+      <!-- RLNC Simulation -->
+      <div class="card">
+        <div class="flex justify-between items-center mb-4">
+          <h2 class="text-2xl font-bold text-primary">RLNC (OptimumP2P)</h2>
+          <div class="px-3 py-1 rounded-full bg-primary/20 text-primary text-sm font-medium">Quantum Sharding</div>
+        </div>
+        <div class="simulation-container relative h-[400px] rounded-lg overflow-hidden mb-4">
+          <div id="rlnc-grid" class="grid absolute inset-0"></div>
+          <div id="rlnc-simulation" class="absolute inset-0"></div>
+        </div>
+        <div class="grid grid-cols-2 gap-4 mb-4">
+          <div class="bg-white/5 rounded-lg p-3">
+            <div class="text-sm opacity-70">Latency</div>
+            <div id="rlnc-latency" class="metric-value text-xl text-primary">0ms</div>
+          </div>
+          <div class="bg-white/5 rounded-lg p-3">
+            <div class="text-sm opacity-70">Throughput</div>
+            <div id="rlnc-throughput" class="metric-value text-xl text-primary">0 Mbps</div>
+          </div>
+          <div class="bg-white/5 rounded-lg p-3">
+            <div class="text-sm opacity-70">Packet Loss</div>
+            <div id="rlnc-packet-loss" class="metric-value text-xl text-primary">0%</div>
+          </div>
+          <div class="bg-white/5 rounded-lg p-3">
+            <div class="text-sm opacity-70">Efficiency</div>
+            <div id="rlnc-efficiency" class="metric-value text-xl text-primary">0%</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Gossipsub Simulation -->
+      <div class="card">
+        <div class="flex justify-between items-center mb-4">
+          <h2 class="text-2xl font-bold text-secondary">Gossipsub</h2>
+          <div class="px-3 py-1 rounded-full bg-secondary/20 text-secondary text-sm font-medium">Peer Propagation</div>
+        </div>
+        <div class="simulation-container relative h-[400px] rounded-lg overflow-hidden mb-4">
+          <div id="gossipsub-grid" class="grid absolute inset-0"></div>
+          <div id="gossipsub-simulation" class="absolute inset-0"></div>
+        </div>
+        <div class="grid grid-cols-2 gap-4 mb-4">
+          <div class="bg-white/5 rounded-lg p-3">
+            <div class="text-sm opacity-70">Latency</div>
+            <div id="gossipsub-latency" class="metric-value text-xl text-secondary">0ms</div>
+          </div>
+          <div class="bg-white/5 rounded-lg p-3">
+            <div class="text-sm opacity-70">Throughput</div>
+            <div id="gossipsub-throughput" class="metric-value text-xl text-secondary">0 Mbps</div>
+          </div>
+          <div class="bg-white/5 rounded-lg p-3">
+            <div class="text-sm opacity-70">Packet Loss</div>
+            <div id="gossipsub-packet-loss" class="metric-value text-xl text-secondary">0%</div>
+          </div>
+          <div class="bg-white/5 rounded-lg p-3">
+            <div class="text-sm opacity-70">Efficiency</div>
+            <div id="gossipsub-efficiency" class="metric-value text-xl text-secondary">0%</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Controls -->
+    <div class="card mt-8">
+      <h2 class="text-2xl font-bold mb-4">Simulation Controls</h2>
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 controls">
+        <div>
+          <label class="block text-sm font-medium mb-2">Network Load</label>
+          <input type="range" id="network-load" class="slider" min="1" max="10" value="5">
+          <div class="flex justify-between text-xs mt-1">
+            <span>Light</span>
+            <span>Heavy</span>
+          </div>
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-2">Block Size</label>
+          <input type="range" id="block-size" class="slider" min="1" max="10" value="5">
+          <div class="flex justify-between text-xs mt-1">
+            <span>Small</span>
+            <span>Large</span>
+          </div>
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-2">Packet Loss %</label>
+          <input type="range" id="packet-loss" class="slider" min="0" max="30" value="5">
+          <div class="flex justify-between text-xs mt-1">
+            <span>0%</span>
+            <span>30%</span>
+          </div>
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-2">Node Count</label>
+          <input type="range" id="node-count" class="slider" min="3" max="12" value="6">
+          <div class="flex justify-between text-xs mt-1">
+            <span>3</span>
+            <span>12</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex flex-wrap gap-4 mt-6">
+        <button id="start-btn" class="btn">Start Simulation</button>
+        <button id="reset-btn" class="btn btn-secondary">Reset</button>
+        <button id="turbo-btn" class="btn btn-accent">Turbo Mode (10x)</button>
+        <button id="compare-btn" class="btn" style="background-color: var(--accent);">Compare Results</button>
+      </div>
+    </div>
+
+    <!-- About OptimumP2P -->
+    <div class="card mt-8">
+      <div class="flex flex-col md:flex-row items-start md:items-center justify-between mb-6">
+        <div>
+          <h2 class="text-2xl font-bold mb-2">About OptimumP2P</h2>
+          <p class="opacity-80">Next-generation protocol for efficient data transmission</p>
+        </div>
+        <div class="mt-4 md:mt-0">
+          <div class="px-4 py-2 rounded-full bg-gradient-to-r from-primary/20 to-secondary/20 border border-primary/30 text-sm font-medium">
+            <span class="bg-clip-text text-transparent bg-gradient-to-r from-primary to-secondary">Powered by Quantum Sharding Technology</span>
+          </div>
+        </div>
+      </div>
+      
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+        <div class="bg-white/5 rounded-lg p-4">
+          <div class="flex items-center mb-3">
+            <div class="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center mr-3">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+            </div>
+            <h3 class="font-semibold">High Performance</h3>
+          </div>
+          <p class="text-sm opacity-70">Up to 10x faster data transmission with optimized routing algorithms</p>
+        </div>
+        
+        <div class="bg-white/5 rounded-lg p-4">
+          <div class="flex items-center mb-3">
+            <div class="w-8 h-8 rounded-full bg-secondary/20 flex items-center justify-center mr-3">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+              </svg>
+            </div>
+            <h3 class="font-semibold">Enhanced Security</h3>
+          </div>
+          <p class="text-sm opacity-70">Built-in encryption and quantum-resistant data sharding</p>
+        </div>
+        
+        <div class="bg-white/5 rounded-lg p-4">
+          <div class="flex items-center mb-3">
+            <div class="w-8 h-8 rounded-full bg-accent/20 flex items-center justify-center mr-3">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+              </svg>
+            </div>
+            <h3 class="font-semibold">Resilient Network</h3>
+          </div>
+          <p class="text-sm opacity-70">Self-healing mesh topology with adaptive routing capabilities</p>
+        </div>
+      </div>
+      
+      <div class="flex flex-col md:flex-row justify-between items-center">
+        <div class="mb-4 md:mb-0">
+          <a href="#" class="btn inline-flex items-center">
+            <span>Learn More</span>
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+            </svg>
+          </a>
+        </div>
+        
+        <div class="flex items-center">
+          <a href="https://mirror.xyz/0xBfAC4db6d990A6cF9842f437345c447B18EbeF73" target="_blank" class="social-icon" title="Mirror">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm0 21.75c-5.385 0-9.75-4.365-9.75-9.75S6.615 2.25 12 2.25s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75z"/>
+              <path d="M12 6.5c-3.038 0-5.5 2.462-5.5 5.5s2.462 5.5 5.5 5.5 5.5-2.462 5.5-5.5-2.462-5.5-5.5-5.5z"/>
+            </svg>
+          </a>
+          <a href="https://discord.gg/getoptimum" target="_blank" class="social-icon" title="Discord">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M20.317 4.3698a19.7913 19.7913 0 00-4.8851-1.5152.0741.0741 0 00-.0785.0371c-.211.3753-.4447.8648-.6083 1.2495-1.8447-.2762-3.68-.2762-5.4868 0-.1636-.3933-.4058-.8742-.6177-1.2495a.077.077 0 00-.0785-.037 19.7363 19.7363 0 00-4.8852 1.515.0699.0699 0 00-.0321.0277C.5334 9.0458-.319 13.5799.0992 18.0578a.0824.0824 0 00.0312.0561c2.0528 1.5076 4.0413 2.4228 5.9929 3.0294a.0777.0777 0 00.0842-.0276c.4616-.6304.8731-1.2952 1.226-1.9942a.076.076 0 00-.0416-.1057c-.6528-.2476-1.2743-.5495-1.8722-.8923a.077.077 0 01-.0076-.1277c.1258-.0943.2517-.1923.3718-.2914a.0743.0743 0 01.0776-.0105c3.9278 1.7933 8.18 1.7933 12.0614 0a.0739.0739 0 01.0785.0095c.1202.099.246.1981.3728.2924a.077.077 0 01-.0066.1276 12.2986 12.2986 0 01-1.873.8914.0766.0766 0 00-.0407.1067c.3604.698.7719 1.3628 1.225 1.9932a.076.076 0 00.0842.0286c1.961-.6067 3.9495-1.5219 6.0023-3.0294a.077.077 0 00.0313-.0552c.5004-5.177-.8382-9.6739-3.5485-13.6604a.061.061 0 00-.0312-.0286zM8.02 15.3312c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9555-2.4189 2.157-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.9555 2.4189-2.1569 2.4189zm7.9748 0c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9554-2.4189 2.1569-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.946 2.4189-2.1568 2.4189Z"/>
+            </svg>
+          </a>
+          <a href="https://x.com/get_optimum" target="_blank" class="social-icon" title="Twitter">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+            </svg>
+          </a>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Footer -->
+    <footer class="footer mt-16 pt-8 pb-8">
+      <div class="flex flex-col md:flex-row justify-between items-center">
+        <div class="mb-6 md:mb-0">
+          <div class="optimum-logo">OptimumP2P</div>
+          <p class="text-sm opacity-70 mt-2">Next-generation protocol for efficient data transmission</p>
+        </div>
+        
+        <div class="flex flex-col md:flex-row items-center">
+          <div class="flex space-x-4 mb-4 md:mb-0 md:mr-8">
+            <a href="https://mirror.xyz/0xBfAC4db6d990A6cF9842f437345c447B18EbeF73" target="_blank" class="text-sm hover:text-primary transition-colors">Mirror</a>
+            <a href="https://discord.gg/getoptimum" target="_blank" class="text-sm hover:text-primary transition-colors">Discord</a>
+            <a href="https://x.com/get_optimum" target="_blank" class="text-sm hover:text-primary transition-colors">Twitter</a>
+          </div>
+          
+          <button class="btn btn-sm px-4 py-2 text-sm">Subscribe to Updates</button>
+        </div>
+      </div>
+      
+      <div class="mt-8 pt-4 border-t border-white/10 flex flex-col md:flex-row justify-between items-center">
+        <p class="text-xs opacity-50">© 2023 OptimumP2P. All rights reserved.</p>
+        <div class="mt-4 md:mt-0 flex space-x-4">
+          <a href="#" class="text-xs opacity-50 hover:opacity-100 transition-opacity">Privacy Policy</a>
+          <a href="#" class="text-xs opacity-50 hover:opacity-100 transition-opacity">Terms of Service</a>
+        </div>
+      </div>
+    </footer>
+  </div>
+
+  <!-- Results Modal -->
+  <div id="results-modal" class="results-modal">
+    <div class="results-content">
+      <div class="flex justify-between items-center mb-6">
+        <h2 class="text-3xl font-bold">Simulation Results</h2>
+        <button id="close-results" class="text-2xl">&times;</button>
+      </div>
+
+      <div class="mb-8">
+        <h3 class="text-xl font-semibold mb-4">Performance Comparison</h3>
+        <div class="chart-container">
+          <div class="chart-axis" style="bottom: 0;"></div>
+          <div class="chart-axis" style="bottom: 25%;"></div>
+          <div class="chart-axis" style="bottom: 50%;"></div>
+          <div class="chart-axis" style="bottom: 75%;"></div>
+          
+          <div id="rlnc-latency-bar" class="chart-bar chart-bar-rlnc" style="height: 0%;">
+            <div class="chart-value">0ms</div>
+          </div>
+          <div class="chart-label" style="left: 5%;">RLNC Latency</div>
+          
+          <div id="gossipsub-latency-bar" class="chart-bar chart-bar-gossipsub" style="height: 0%;">
+            <div class="chart-value">0ms</div>
+          </div>
+          <div class="chart-label" style="right: 5%;">Gossipsub Latency</div>
+        </div>
+        
+        <div class="chart-container mt-12">
+          <div class="chart-axis" style="bottom: 0;"></div>
+          <div class="chart-axis" style="bottom: 25%;"></div>
+          <div class="chart-axis" style="bottom: 50%;"></div>
+          <div class="chart-axis" style="bottom: 75%;"></div>
+          
+          <div id="rlnc-throughput-bar" class="chart-bar chart-bar-rlnc" style="height: 0%;">
+            <div class="chart-value">0 Mbps</div>
+          </div>
+          <div class="chart-label" style="left: 5%;">RLNC Throughput</div>
+          
+          <div id="gossipsub-throughput-bar" class="chart-bar chart-bar-gossipsub" style="height: 0%;">
+            <div class="chart-value">0 Mbps</div>
+          </div>
+          <div class="chart-label" style="right: 5%;">Gossipsub Throughput</div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+        <div class="card" style="background-color: rgba(99, 102, 241, 0.1);">
+          <h3 class="text-xl font-semibold mb-2 text-primary">RLNC Advantages</h3>
+          <ul class="list-disc pl-5 space-y-2">
+            <li>Quantum sharding enables parallel data transmission</li>
+            <li>Resilient to packet loss through redundant encoding</li>
+            <li>Scales efficiently with network size</li>
+            <li>Optimal for high-latency environments</li>
+          </ul>
+        </div>
+        <div class="card" style="background-color: rgba(236, 72, 153, 0.1);">
+          <h3 class="text-xl font-semibold mb-2 text-secondary">Gossipsub Advantages</h3>
+          <ul class="list-disc pl-5 space-y-2">
+            <li>Simple implementation and low overhead</li>
+            <li>Good for small to medium networks</li>
+            <li>Predictable behavior under normal conditions</li>
+            <li>Lower computational requirements</li>
+          </ul>
+        </div>
+      </div>
+
+      <div id="winner-section" class="text-center py-6 rounded-lg bg-gradient-to-r from-primary/20 to-accent/20 mb-8">
+        <h3 class="text-2xl font-bold mb-2">Simulation Winner</h3>
+        <div id="winner-protocol" class="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent">RLNC (OptimumP2P)</div>
+        <p class="mt-2 opacity-80">Outperformed by <span id="winner-percent">35%</span> in overall efficiency</p>
+      </div>
+
+      <div class="flex justify-center">
+        <button id="share-results" class="btn px-6 py-3">
+          <span class="flex items-center">
+            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"></path>
+            </svg>
+            Share Results
+          </span>
+        </button>
+      </div>
+      
+      <div class="mt-8 pt-6 border-t border-white/10 text-center">
+        <p class="mb-4">Learn more about OptimumP2P:</p>
+        <div class="flex justify-center space-x-4">
+          <a href="https://mirror.xyz/0xBfAC4db6d990A6cF9842f437345c447B18EbeF73" target="_blank" class="btn btn-sm bg-white/10 hover:bg-white/20 transition-colors">
+            <span class="flex items-center">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" class="mr-2">
+                <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm0 21.75c-5.385 0-9.75-4.365-9.75-9.75S6.615 2.25 12 2.25s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75z"/>
+                <path d="M12 6.5c-3.038 0-5.5 2.462-5.5 5.5s2.462 5.5 5.5 5.5 5.5-2.462 5.5-5.5-2.462-5.5-5.5-5.5z"/>
+              </svg>
+              Mirror
+            </span>
+          </a>
+          <a href="https://discord.gg/getoptimum" target="_blank" class="btn btn-sm bg-white/10 hover:bg-white/20 transition-colors">
+            <span class="flex items-center">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" class="mr-2">
+                <path d="M20.317 4.3698a19.7913 19.7913 0 00-4.8851-1.5152.0741.0741 0 00-.0785.0371c-.211.3753-.4447.8648-.6083 1.2495-1.8447-.2762-3.68-.2762-5.4868 0-.1636-.3933-.4058-.8742-.6177-1.2495a.077.077 0 00-.0785-.037 19.7363 19.7363 0 00-4.8852 1.515.0699.0699 0 00-.0321.0277C.5334 9.0458-.319 13.5799.0992 18.0578a.0824.0824 0 00.0312.0561c2.0528 1.5076 4.0413 2.4228 5.9929 3.0294a.0777.0777 0 00.0842-.0276c.4616-.6304.8731-1.2952 1.226-1.9942a.076.076 0 00-.0416-.1057c-.6528-.2476-1.2743-.5495-1.8722-.8923a.077.077 0 01-.0076-.1277c.1258-.0943.2517-.1923.3718-.2914a.0743.0743 0 01.0776-.0105c3.9278 1.7933 8.18 1.7933 12.0614 0a.0739.0739 0 01.0785.0095c.1202.099.246.1981.3728.2924a.077.077 0 01-.0066.1276 12.2986 12.2986 0 01-1.873.8914.0766.0766 0 00-.0407.1067c.3604.698.7719 1.3628 1.225 1.9932a.076.076 0 00.0842.0286c1.961-.6067 3.9495-1.5219 6.0023-3.0294a.077.077 0 00.0313-.0552c.5004-5.177-.8382-9.6739-3.5485-13.6604a.061.061 0 00-.0312-.0286zM8.02 15.3312c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9555-2.4189 2.157-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.9555 2.4189-2.1569 2.4189zm7.9748 0c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9554-2.4189 2.1569-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.946 2.4189-2.1568 2.4189Z"/>
+              </svg>
+              Discord
+            </span>
+          </a>
+          <a href="https://x.com/get_optimum" target="_blank" class="btn btn-sm bg-white/10 hover:bg-white/20 transition-colors">
+            <span class="flex items-center">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" class="mr-2">
+                <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+              </svg>
+              Twitter
+            </span>
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Theme Switcher
+    document.querySelectorAll('.theme-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const theme = btn.dataset.theme;
+        document.body.className = theme === 'dark' ? '' : `${theme}-theme`;
+        
+        document.querySelectorAll('.theme-btn').forEach(b => {
+          b.classList.remove('active');
+        });
+        btn.classList.add('active');
+      });
+    });
+
+    // Simulation Class
+    class ProtocolSimulation {
+      constructor(type, containerId, gridId) {
+        this.type = type; // 'rlnc' or 'gossipsub'
+        this.container = document.getElementById(containerId);
+        this.grid = document.getElementById(gridId);
+        this.nodes = [];
+        this.connections = [];
+        this.packets = [];
+        this.shards = [];
+        this.nodeCount = 6;
+        this.isRunning = false;
+        this.speedMultiplier = 1;
+        this.networkLoad = 5;
+        this.blockSize = 5;
+        this.packetLossPercent = 5;
+        
+        // Metrics
+        this.latency = 0;
+        this.throughput = 0;
+        this.packetLoss = 0;
+        this.efficiency = 0;
+        
+        // Animation frames
+        this.animationFrame = null;
+        
+        // Initialize
+        this.init();
+      }
+      
+      init() {
+        this.createNodes();
+        this.createConnections();
+        this.updateMetricsDisplay();
+      }
+      
+      createNodes() {
+        // Clear existing nodes
+        this.container.querySelectorAll('.node').forEach(node => node.remove());
+        this.nodes = [];
+        
+        // Create new nodes
+        for (let i = 0; i < this.nodeCount; i++) {
+          const node = document.createElement('div');
+          node.className = `node node-${this.type}`;
+          node.textContent = i + 1;
+          
+          // Position nodes in a circle
+          const angle = (i / this.nodeCount) * Math.PI * 2;
+          const radius = Math.min(this.container.offsetWidth, this.container.offsetHeight) * 0.35;
+          const x = this.container.offsetWidth / 2 + radius * Math.cos(angle);
+          const y = this.container.offsetHeight / 2 + radius * Math.sin(angle);
+          
+          node.style.left = `${x - 20}px`;
+          node.style.top = `${y - 20}px`;
+          
+          this.container.appendChild(node);
+          this.nodes.push({
+            element: node,
+            x: x,
+            y: y,
+            id: i,
+            queue: []
+          });
+          
+          // Add hover effect
+          node.addEventListener('mouseover', () => {
+            node.style.transform = 'scale(1.2)';
+          });
+          
+          node.addEventListener('mouseout', () => {
+            node.style.transform = 'scale(1)';
+          });
+        }
+      }
+      
+      createConnections() {
+        // Clear existing connections
+        this.container.querySelectorAll('.connection').forEach(conn => conn.remove());
+        this.connections = [];
+        
+        // Create connections based on protocol type
+        if (this.type === 'rlnc') {
+          // RLNC: Connect all nodes (mesh network)
+          for (let i = 0; i < this.nodes.length; i++) {
+            for (let j = i + 1; j < this.nodes.length; j++) {
+              this.createConnection(i, j);
+            }
+          }
+        } else {
+          // Gossipsub: Connect in a partial mesh (each node connects to ~3 others)
+          for (let i = 0; i < this.nodes.length; i++) {
+            // Connect to next 2-3 nodes in a ring
+            for (let j = 1; j <= 3; j++) {
+              const targetIndex = (i + j) % this.nodes.length;
+              if (targetIndex !== i) {
+                this.createConnection(i, targetIndex);
+              }
+            }
+          }
+        }
+      }
+      
+      createConnection(sourceIndex, targetIndex) {
+        const source = this.nodes[sourceIndex];
+        const target = this.nodes[targetIndex];
+        
+        const connection = document.createElement('div');
+        connection.className = `connection connection-${this.type}`;
+        
+        // Calculate position and rotation
+        const dx = target.x - source.x;
+        const dy = target.y - source.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+        
+        connection.style.width = `${distance}px`;
+        connection.style.left = `${source.x}px`;
+        connection.style.top = `${source.y}px`;
+        connection.style.transform = `rotate(${angle}deg)`;
+        
+        this.container.appendChild(connection);
+        this.connections.push({
+          element: connection,
+          source: sourceIndex,
+          target: targetIndex,
+          distance: distance
+        });
+      }
+      
+      start() {
+        if (this.isRunning) return;
+        this.isRunning = true;
+        this.animate();
+        
+        // Start sending data
+        this.scheduleDataTransmission();
+      }
+      
+      stop() {
+        this.isRunning = false;
+        if (this.animationFrame) {
+          cancelAnimationFrame(this.animationFrame);
+        }
+      }
+      
+      reset() {
+        this.stop();
+        
+        // Clear all packets and shards
+        this.container.querySelectorAll('.packet, .shard').forEach(el => el.remove());
+        this.packets = [];
+        this.shards = [];
+        
+        // Reset metrics
+        this.latency = 0;
+        this.throughput = 0;
+        this.packetLoss = 0;
+        this.efficiency = 0;
+        this.updateMetricsDisplay();
+        
+        // Recreate nodes and connections
+        this.createNodes();
+        this.createConnections();
+      }
+      
+      setNodeCount(count) {
+        this.nodeCount = count;
+        this.reset();
+      }
+      
+      setNetworkLoad(load) {
+        this.networkLoad = load;
+      }
+      
+      setBlockSize(size) {
+        this.blockSize = size;
+      }
+      
+      setPacketLoss(loss) {
+        this.packetLossPercent = loss;
+      }
+      
+      setSpeed(multiplier) {
+        this.speedMultiplier = multiplier;
+      }
+      
+      scheduleDataTransmission() {
+        if (!this.isRunning) return;
+        
+        // Send data from a random node
+        const sourceIndex = Math.floor(Math.random() * this.nodes.length);
+        
+        if (this.type === 'rlnc') {
+          this.sendRLNCData(sourceIndex);
+        } else {
+          this.sendGossipsubData(sourceIndex);
+        }
+        
+        // Schedule next transmission based on network load
+        const delay = 2000 / (this.networkLoad * this.speedMultiplier);
+        setTimeout(() => this.scheduleDataTransmission(), delay);
+      }
+      
+      sendRLNCData(sourceIndex) {
+        const source = this.nodes[sourceIndex];
+        
+        // Create shards based on block size
+        const shardCount = this.blockSize * 3;
+        const shardColors = [
+          '#6366f1', '#8b5cf6', '#d946ef',
+          '#ec4899', '#f43f5e', '#fb7185',
+          '#3b82f6', '#0ea5e9', '#06b6d4'
+        ];
+        
+        // Create and animate shards
+        for (let i = 0; i < shardCount; i++) {
+          // Skip some shards based on packet loss
+          if (Math.random() * 100 < this.packetLossPercent) {
+            this.packetLoss++;
+            continue;
+          }
+          
+          const shard = document.createElement('div');
+          shard.className = 'shard';
+          shard.style.backgroundColor = shardColors[i % shardColors.length];
+          shard.style.boxShadow = `0 0 10px ${shardColors[i % shardColors.length]}`;
+          
+          // Position at source node
+          shard.style.left = `${source.x - 4}px`;
+          shard.style.top = `${source.y - 4}px`;
+          
+          this.container.appendChild(shard);
+          
+          // Determine target node - for RLNC, send to random nodes
+          const targetIndices = [];
+          const targetCount = Math.min(3, this.nodes.length - 1);
+          
+          while (targetIndices.length < targetCount) {
+            const idx = Math.floor(Math.random() * this.nodes.length);
+            if (idx !== sourceIndex && !targetIndices.includes(idx)) {
+              targetIndices.push(idx);
+            }
+          }
+          
+          // Animate to targets
+          targetIndices.forEach((targetIndex, idx) => {
+            const target = this.nodes[targetIndex];
+            const delay = idx * 100;
+            
+            setTimeout(() => {
+              const clone = shard.cloneNode();
+              this.container.appendChild(clone);
+              
+              // Calculate random path with bezier curve
+              const controlX = (source.x + target.x) / 2 + (Math.random() - 0.5) * 100;
+              const controlY = (source.y + target.y) / 2 + (Math.random() - 0.5) * 100;
+              
+              // Animate along path
+              const startTime = performance.now();
+              const duration = 1000 / this.speedMultiplier;
+              
+              const animateShard = (timestamp) => {
+                const elapsed = timestamp - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+                
+                // Bezier curve calculation
+                const t = progress;
+                const u = 1 - t;
+                const x = u * u * source.x + 2 * u * t * controlX + t * t * target.x;
+                const y = u * u * source.y + 2 * u * t * controlY + t * t * target.y;
+                
+                clone.style.left = `${x - 4}px`;
+                clone.style.top = `${y - 4}px`;
+                
+                // Scale and rotate for effect
+                const scale = 1 + Math.sin(progress * Math.PI) * 0.5;
+                const rotate = progress * 360;
+                clone.style.transform = `scale(${scale}) rotate(${rotate}deg)`;
+                
+                if (progress < 1) {
+                  requestAnimationFrame(animateShard);
+                } else {
+                  // Arrived at target
+                  setTimeout(() => {
+                    clone.remove();
+                    
+                    // Update metrics
+                    this.throughput += this.blockSize / targetCount;
+                    this.latency = Math.min(200, Math.max(20, 100 - this.networkLoad * 5));
+                    this.efficiency = 95 - this.packetLossPercent * 1.5;
+                    this.updateMetricsDisplay();
+                  }, 100);
+                }
+              };
+              
+              requestAnimationFrame(animateShard);
+            }, delay);
+          });
+          
+          // Remove original shard after a delay
+          setTimeout(() => {
+            shard.remove();
+          }, 200);
+        }
+      }
+      
+      sendGossipsubData(sourceIndex) {
+        const source = this.nodes[sourceIndex];
+        
+        // Find direct connections from this node
+        const connections = this.connections.filter(conn => 
+          conn.source === sourceIndex || conn.target === sourceIndex
+        );
+        
+        if (connections.length === 0) return;
+        
+        // Create packet
+        const packet = document.createElement('div');
+        packet.className = `packet packet-${this.type}`;
+        
+        // Position at source node
+        packet.style.left = `${source.x - 6}px`;
+        packet.style.top = `${source.y - 6}px`;
+        
+        this.container.appendChild(packet);
+        
+        // Get connected nodes
+        const connectedNodes = connections.map(conn => 
+          conn.source === sourceIndex ? conn.target : conn.source
+        );
+        
+        // Send to first node
+        this.propagateGossipsubPacket(packet, sourceIndex, connectedNodes, 0, new Set([sourceIndex]));
+      }
+      
+      propagateGossipsubPacket(packet, sourceIndex, targetIndices, currentIndex, visitedNodes) {
+        if (currentIndex >= targetIndices.length || !this.isRunning) {
+          packet.remove();
+          return;
+        }
+        
+        const targetIndex = targetIndices[currentIndex];
+        const source = this.nodes[sourceIndex];
+        const target = this.nodes[targetIndex];
+        
+        // Skip based on packet loss
+        if (Math.random() * 100 < this.packetLossPercent) {
+          this.packetLoss++;
+          setTimeout(() => {
+            this.propagateGossipsubPacket(packet, sourceIndex, targetIndices, currentIndex + 1, visitedNodes);
+          }, 100 / this.speedMultiplier);
+          return;
+        }
+        
+        // Animate packet movement
+        const startTime = performance.now();
+        const distance = Math.sqrt(
+          Math.pow(target.x - source.x, 2) + 
+          Math.pow(target.y - source.y, 2)
+        );
+        const duration = (distance / 100) * 500 / this.speedMultiplier;
+        
+        const animatePacket = (timestamp) => {
+          const elapsed = timestamp - startTime;
+          const progress = Math.min(elapsed / duration, 1);
+          
+          const x = source.x + (target.x - source.x) * progress;
+          const y = source.y + (target.y - source.y) * progress;
+          
+          packet.style.left = `${x - 6}px`;
+          packet.style.top = `${y - 6}px`;
+          
+          if (progress < 1) {
+            requestAnimationFrame(animatePacket);
+          } else {
+            // Arrived at target
+            visitedNodes.add(targetIndex);
+            
+            // Update metrics
+            this.throughput += this.blockSize * 0.8;
+            this.latency = Math.min(400, Math.max(50, 150 - this.networkLoad * 8));
+            this.efficiency = 85 - this.packetLossPercent * 2;
+            this.updateMetricsDisplay();
+            
+            // Continue propagation
+            setTimeout(() => {
+              // Find next nodes to propagate to
+              const nextConnections = this.connections.filter(conn => 
+                (conn.source === targetIndex || conn.target === targetIndex) &&
+                !visitedNodes.has(conn.source === targetIndex ? conn.target : conn.source)
+              );
+              
+              const nextTargets = nextConnections.map(conn => 
+                conn.source === targetIndex ? conn.target : conn.source
+              );
+              
+              if (nextTargets.length > 0) {
+                // Clone packet for next propagation
+                const clone = packet.cloneNode();
+                this.container.appendChild(clone);
+                
+                // Propagate to next nodes
+                this.propagateGossipsubPacket(clone, targetIndex, nextTargets, 0, new Set([...visitedNodes]));
+              }
+              
+              // Continue with original propagation
+              this.propagateGossipsubPacket(packet, sourceIndex, targetIndices, currentIndex + 1, visitedNodes);
+            }, 200 / this.speedMultiplier);
+          }
+        };
+        
+        requestAnimationFrame(animatePacket);
+      }
+      
+      animate() {
+        if (!this.isRunning) return;
+        
+        // Animation logic here
+        this.animationFrame = requestAnimationFrame(() => this.animate());
+      }
+      
+      updateMetricsDisplay() {
+        // Update UI with current metrics
+        document.getElementById(`${this.type}-latency`).textContent = `${Math.round(this.latency)}ms`;
+        document.getElementById(`${this.type}-throughput`).textContent = `${Math.round(this.throughput)} Mbps`;
+        document.getElementById(`${this.type}-packet-loss`).textContent = `${Math.round(this.packetLossPercent)}%`;
+        document.getElementById(`${this.type}-efficiency`).textContent = `${Math.round(this.efficiency)}%`;
+      }
+      
+      getMetrics() {
+        return {
+          latency: this.latency,
+          throughput: this.throughput,
+          packetLoss: this.packetLossPercent,
+          efficiency: this.efficiency
+        };
+      }
+    }
+
+    // Initialize simulations
+    const rlncSimulation = new ProtocolSimulation('rlnc', 'rlnc-simulation', 'rlnc-grid');
+    const gossipsubSimulation = new ProtocolSimulation('gossipsub', 'gossipsub-simulation', 'gossipsub-grid');
+
+    // Control event listeners
+    document.getElementById('start-btn').addEventListener('click', () => {
+      rlncSimulation.start();
+      gossipsubSimulation.start();
+      document.getElementById('start-btn').textContent = 'Running...';
+      document.getElementById('start-btn').disabled = true;
+    });
+
+    document.getElementById('reset-btn').addEventListener('click', () => {
+      rlncSimulation.reset();
+      gossipsubSimulation.reset();
+      document.getElementById('start-btn').textContent = 'Start Simulation';
+      document.getElementById('start-btn').disabled = false;
+    });
+
+    document.getElementById('turbo-btn').addEventListener('click', function() {
+      const isTurbo = this.classList.toggle('active');
+      const multiplier = isTurbo ? 10 : 1;
+      rlncSimulation.setSpeed(multiplier);
+      gossipsubSimulation.setSpeed(multiplier);
+      this.textContent = isTurbo ? 'Normal Speed' : 'Turbo Mode (10x)';
+    });
+
+    document.getElementById('network-load').addEventListener('input', function() {
+      const value = parseInt(this.value);
+      rlncSimulation.setNetworkLoad(value);
+      gossipsubSimulation.setNetworkLoad(value);
+    });
+
+    document.getElementById('block-size').addEventListener('input', function() {
+      const value = parseInt(this.value);
+      rlncSimulation.setBlockSize(value);
+      gossipsubSimulation.setBlockSize(value);
+    });
+
+    document.getElementById('packet-loss').addEventListener('input', function() {
+      const value = parseInt(this.value);
+      rlncSimulation.setPacketLoss(value);
+      gossipsubSimulation.setPacketLoss(value);
+    });
+
+    document.getElementById('node-count').addEventListener('input', function() {
+      const value = parseInt(this.value);
+      rlncSimulation.setNodeCount(value);
+      gossipsubSimulation.setNodeCount(value);
+    });
+
+    // Results modal
+    const resultsModal = document.getElementById('results-modal');
+    
+    document.getElementById('compare-btn').addEventListener('click', () => {
+      showResults();
+    });
+    
+    document.getElementById('close-results').addEventListener('click', () => {
+      resultsModal.classList.remove('active');
+    });
+    
+    document.getElementById('share-results').addEventListener('click', () => {
+      // Simulate share functionality
+      const btn = document.getElementById('share-results');
+      const originalText = btn.innerHTML;
+      btn.innerHTML = '<span>Copied to clipboard!</span>';
+      
+      setTimeout(() => {
+        btn.innerHTML = originalText;
+      }, 2000);
+      
+      // Create confetti effect
+      createConfetti();
+    });
+    
+    function showResults() {
+      const rlncMetrics = rlncSimulation.getMetrics();
+      const gossipsubMetrics = gossipsubSimulation.getMetrics();
+      
+      // Update chart bars
+      const rlncLatencyBar = document.getElementById('rlnc-latency-bar');
+      const gossipsubLatencyBar = document.getElementById('gossipsub-latency-bar');
+      const rlncThroughputBar = document.getElementById('rlnc-throughput-bar');
+      const gossipsubThroughputBar = document.getElementById('gossipsub-throughput-bar');
+      
+      // Normalize values for visualization
+      const maxLatency = Math.max(rlncMetrics.latency, gossipsubMetrics.latency);
+      const maxThroughput = Math.max(rlncMetrics.throughput, gossipsubMetrics.throughput);
+      
+      // Set heights and values
+      rlncLatencyBar.style.height = `${(rlncMetrics.latency / maxLatency) * 80}%`;
+      gossipsubLatencyBar.style.height = `${(gossipsubMetrics.latency / maxLatency) * 80}%`;
+      rlncThroughputBar.style.height = `${(rlncMetrics.throughput / maxThroughput) * 80}%`;
+      gossipsubThroughputBar.style.height = `${(gossipsubMetrics.throughput / maxThroughput) * 80}%`;
+      
+      rlncLatencyBar.querySelector('.chart-value').textContent = `${Math.round(rlncMetrics.latency)}ms`;
+      gossipsubLatencyBar.querySelector('.chart-value').textContent = `${Math.round(gossipsubMetrics.latency)}ms`;
+      rlncThroughputBar.querySelector('.chart-value').textContent = `${Math.round(rlncMetrics.throughput)} Mbps`;
+      gossipsubThroughputBar.querySelector('.chart-value').textContent = `${Math.round(gossipsubMetrics.throughput)} Mbps`;
+      
+      // Determine winner
+      const rlncScore = (rlncMetrics.throughput / 10) - (rlncMetrics.latency / 100) + rlncMetrics.efficiency;
+      const gossipsubScore = (gossipsubMetrics.throughput / 10) - (gossipsubMetrics.latency / 100) + gossipsubMetrics.efficiency;
+      
+      const winnerElement = document.getElementById('winner-protocol');
+      const winnerPercentElement = document.getElementById('winner-percent');
+      
+      if (rlncScore > gossipsubScore) {
+        winnerElement.textContent = 'RLNC (OptimumP2P)';
+        winnerElement.className = 'text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent';
+        const percent = Math.round(((rlncScore - gossipsubScore) / gossipsubScore) * 100);
+        winnerPercentElement.textContent = `${percent}%`;
+      } else {
+        winnerElement.textContent = 'Gossipsub';
+        winnerElement.className = 'text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-secondary to-accent';
+        const percent = Math.round(((gossipsubScore - rlncScore) / rlncScore) * 100);
+        winnerPercentElement.textContent = `${percent}%`;
+      }
+      
+      // Show modal
+      resultsModal.classList.add('active');
+    }
+    
+    function createConfetti() {
+      const colors = ['#6366f1', '#ec4899', '#8b5cf6', '#10b981', '#3b82f6', '#f59e0b'];
+      const confettiCount = 100;
+      
+      for (let i = 0; i < confettiCount; i++) {
+        const confetti = document.createElement('div');
+        confetti.className = 'confetti';
+        confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+        confetti.style.left = `${Math.random() * 100}%`;
+        confetti.style.top = '-20px';
+        confetti.style.transform = `rotate(${Math.random() * 360}deg)`;
+        
+        document.body.appendChild(confetti);
+        
+        // Animate falling
+        const duration = 1000 + Math.random() * 3000;
+        const horizontalPosition = Math.random() * 100;
+        
+        confetti.animate([
+          { top: '-20px', left: `${horizontalPosition}%`, opacity: 1, transform: `rotate(0deg) scale(1)` },
+          { top: '100vh', left: `${horizontalPosition + (Math.random() - 0.5) * 40}%`, opacity: 0, transform: `rotate(${360 + Math.random() * 720}deg) scale(0)` }
+        ], {
+          duration: duration,
+          easing: 'cubic-bezier(0.215, 0.61, 0.355, 1)'
+        });
+        
+        setTimeout(() => {
+          confetti.remove();
+        }, duration);
+      }
+    }
+
+    // Responsive adjustments
+    function handleResize() {
+      rlncSimulation.reset();
+      gossipsubSimulation.reset();
+    }
+
+    window.addEventListener('resize', handleResize);
+  </script>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'953d509f4549f5d7',t:'MTc1MDYxMTc2My4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
